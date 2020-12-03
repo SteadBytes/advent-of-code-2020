@@ -4,7 +4,7 @@ use itertools::Itertools;
 
 const TARGET: i32 = 2020;
 
-pub fn part_1(entries: &[i32]) -> i32 {
+fn part_1(entries: &[i32]) -> i32 {
     entries
         .iter()
         .combinations(2)
@@ -15,7 +15,7 @@ pub fn part_1(entries: &[i32]) -> i32 {
         .product()
 }
 
-pub fn part_2(entries: &[i32]) -> i32 {
+fn part_2(entries: &[i32]) -> i32 {
     entries
         .iter()
         .combinations(3)
