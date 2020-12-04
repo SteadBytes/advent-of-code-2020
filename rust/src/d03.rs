@@ -38,6 +38,7 @@ fn part_2(g: &Grid) -> i64 {
         .product()
 }
 
+// TODO: Comment this wrapping around logic
 fn count_trees(g: &Grid, slope: (usize, usize)) -> i64 {
     let width = g[0].len();
     let height = g.len();
