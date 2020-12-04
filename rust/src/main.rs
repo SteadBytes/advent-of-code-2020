@@ -1,5 +1,6 @@
 mod d01;
 mod d03;
+mod d04;
 use std::io::{self, Read};
 
 fn main() {
@@ -9,6 +10,7 @@ fn main() {
     let run = match day.as_ref() {
         "d01" => d01::run,
         "d03" => d03::run,
+        "d04" => d04::run,
         _ => panic!("must provide a valid day e.g. d01"),
     };
 
