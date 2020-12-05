@@ -1,6 +1,8 @@
 mod d01;
 mod d03;
 mod d04;
+mod d05;
+
 use std::io::{self, Read};
 
 fn main() {
@@ -11,6 +13,7 @@ fn main() {
         "d01" => d01::run,
         "d03" => d03::run,
         "d04" => d04::run,
+        "d05" => d05::run,
         _ => panic!("must provide a valid day e.g. d01"),
     };
 
