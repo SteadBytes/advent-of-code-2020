@@ -1,4 +1,11 @@
 #![allow(dead_code)]
+use std::collections::HashSet;
+
+const ROW_MAX: u8 = 127;
+const COL_MAX: u8 = 7;
+
+const ROWSPEC: BspSpec = ('F', 'B', ROW_MAX);
+const COLSPEC: BspSpec = ('L', 'R', COL_MAX);
 
 #[derive(PartialEq, PartialOrd, Eq, Ord, Debug)]
 enum ParseError {
@@ -12,29 +19,36 @@ enum Error {
     NotFound,
 }
 
-type Seat = (u8, u8, u16); // max ID = 127 * 8 + 7 = 1023 < u16::MAX
+type SeatId = u16; // max ID = 127 * 8 + 7 = 1023 < u16::MAX
 
 /// Specification for binary space partioning sections e.g. rows, columns.
 type BspSpec = (char, char, u8);
 
-const ROW_MAX: u8 = 127;
-const COL_MAX: u8 = 7;
-
-const ROWSPEC: BspSpec = ('F', 'B', ROW_MAX);
-const COLSPEC: BspSpec = ('L', 'R', COL_MAX);
-
 /// Return `Ok(max_id)` if `seats` is not empty else `Err`.
-fn part_1(seats: &[Seat]) -> Result<u16, Error> {
-    seats
-        .iter()
-        .map(|(_, _, id)| *id)
-        .max()
+fn part_1(seats: &[SeatId]) -> Result<u16, Error> {
+    seats.iter().max().copied().ok_or(Error::NotFound)
+}
+
+fn part_2(seats: &[SeatId]) -> Result<u16, Error> {
+    // TODO: Is there a smarter way to do this? I mean, this runs fast as hell anyway
+    // as the input isn't that large but I feel like I'm missing something that would
+    // allow for another method other than exhaustive search.
+    let occupied_seats: HashSet<&u16> = seats.iter().collect();
+    let all_ids = (0..ROW_MAX).flat_map(|r| (0..COL_MAX).map(move |c| seat_id(r, c)));
+    all_ids
+        .filter(|id| {
+            !occupied_seats.contains(&id)
+                && (occupied_seats.contains(&(id - 1)) && occupied_seats.contains(&(id + 1)))
+        })
+        .next()
         .ok_or(Error::NotFound)
 }
 
-// fn part_2(seats: &[Seat]) -> Result<u16, Error> {}
+const fn seat_id(row: u8, col: u8) -> u16 {
+    row as u16 * 8 + col as u16
+}
 
-fn parse_input(input: &str) -> Result<Vec<(u8, u8, u16)>, ParseError> {
+fn parse_input(input: &str) -> Result<Vec<SeatId>, ParseError> {
     input
         .lines()
         .map(|l| {
@@ -45,7 +59,7 @@ fn parse_input(input: &str) -> Result<Vec<(u8, u8, u16)>, ParseError> {
             let (rowpart, colpart) = l.split_at(7);
             let row = bsp_search(ROWSPEC, rowpart)?;
             let col = bsp_search(COLSPEC, colpart)?;
-            Ok((row, col, row as u16 * 8 + col as u16))
+            Ok(seat_id(row, col))
         })
         .collect()
 }
@@ -70,8 +84,9 @@ fn bsp_search(spec: BspSpec, s: &str) -> Result<u8, ParseError> {
 pub fn run(input: &str) {
     let parsed = parse_input(input).expect("unable to parse input");
     assert!(parsed.len() > 0, "no boarding passes in input");
+    assert_eq!(input.lines().count(), parsed.len());
     println!("Part 1: {}", part_1(&parsed).unwrap());
-    // /* println!("Part 2: {}", part_2(&parsed)); */
+    println!("Part 2: {}", part_2(&parsed).unwrap());
 }
 
 #[cfg(test)]
@@ -88,18 +103,12 @@ BBFFBBFRLL
     #[test]
     fn parse_input_example() {
         let seats = parse_input(EXAMPLE_INPUT).unwrap();
-        assert_eq!(
-            seats,
-            [(44, 5, 357), (70, 7, 567), (14, 7, 119), (102, 4, 820)]
-        );
+        assert_eq!(seats, [357, 567, 119, 820]);
     }
 
     #[test]
     fn part_1_example() {
         let seats = parse_input(EXAMPLE_INPUT).unwrap();
-        assert_eq!(part_1(&seats), Ok((820)));
+        assert_eq!(part_1(&seats), Ok(820));
     }
-
-    #[test]
-    fn part_2_example() {}
 }
