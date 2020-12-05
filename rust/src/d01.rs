@@ -4,6 +4,12 @@ use itertools::Itertools;
 
 const TARGET: i32 = 2020;
 
+pub fn run(input: &str) {
+    let entries = parse_input(input);
+    println!("Part 1: {}", part_1(&entries));
+    println!("Part 2: {}", part_2(&entries));
+}
+
 fn part_1(entries: &[i32]) -> i32 {
     entries
         .iter()
@@ -31,12 +37,6 @@ fn parse_input(input: &str) -> Vec<i32> {
         .lines()
         .map(|s| s.parse().expect("could not parse input to integers"))
         .collect()
-}
-
-pub fn run(input: &str) {
-    let entries = parse_input(input);
-    println!("Part 1: {}", part_1(&entries));
-    println!("Part 2: {}", part_2(&entries));
 }
 
 #[cfg(test)]

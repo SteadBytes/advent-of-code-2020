@@ -7,24 +7,19 @@ const COL_MAX: u8 = 7;
 const ROWSPEC: BspSpec = ('F', 'B', ROW_MAX);
 const COLSPEC: BspSpec = ('L', 'R', COL_MAX);
 
-#[derive(PartialEq, PartialOrd, Eq, Ord, Debug)]
-enum ParseError {
-    InvalidLength,
-    InvalidChar,
+const fn seat_id(row: u8, col: u8) -> u16 {
+    row as u16 * 8 + col as u16
 }
 
-#[derive(PartialEq, PartialOrd, Eq, Ord, Debug)]
-enum Error {
-    Parse(ParseError),
-    NotFound,
+pub fn run(input: &str) {
+    let parsed = parse_input(input).expect("unable to parse input");
+    assert!(parsed.len() > 0, "no boarding passes in input");
+    assert_eq!(input.lines().count(), parsed.len());
+    println!("Part 1: {}", part_1(&parsed).unwrap());
+    println!("Part 2: {}", part_2(&parsed).unwrap());
 }
 
-type SeatId = u16; // max ID = 127 * 8 + 7 = 1023 < u16::MAX
-
-/// Specification for binary space partioning sections e.g. rows, columns.
-type BspSpec = (char, char, u8);
-
-/// Return `Ok(max_id)` if `seats` is not empty else `Err`.
+/// Returns `Ok(max_id)` if `seats` is not empty else `Err`.
 fn part_1(seats: &[SeatId]) -> Result<u16, Error> {
     seats.iter().max().copied().ok_or(Error::NotFound)
 }
@@ -44,10 +39,6 @@ fn part_2(seats: &[SeatId]) -> Result<u16, Error> {
         .ok_or(Error::NotFound)
 }
 
-const fn seat_id(row: u8, col: u8) -> u16 {
-    row as u16 * 8 + col as u16
-}
-
 fn parse_input(input: &str) -> Result<Vec<SeatId>, ParseError> {
     input
         .lines()
@@ -64,6 +55,23 @@ fn parse_input(input: &str) -> Result<Vec<SeatId>, ParseError> {
         .collect()
 }
 
+#[derive(PartialEq, PartialOrd, Eq, Ord, Debug)]
+enum ParseError {
+    InvalidLength,
+    InvalidChar,
+}
+
+#[derive(PartialEq, PartialOrd, Eq, Ord, Debug)]
+enum Error {
+    Parse(ParseError),
+    NotFound,
+}
+
+type SeatId = u16; // max ID = 127 * 8 + 7 = 1023 < u16::MAX
+
+/// Specification for binary space partioning sections e.g. rows, columns.
+type BspSpec = (char, char, u8);
+
 fn bsp_search(spec: BspSpec, s: &str) -> Result<u8, ParseError> {
     let mut low = 0;
     let (lowc, highc, mut high) = spec;
@@ -79,14 +87,6 @@ fn bsp_search(spec: BspSpec, s: &str) -> Result<u8, ParseError> {
         mid = (low + high) / 2;
     }
     Ok(mid)
-}
-
-pub fn run(input: &str) {
-    let parsed = parse_input(input).expect("unable to parse input");
-    assert!(parsed.len() > 0, "no boarding passes in input");
-    assert_eq!(input.lines().count(), parsed.len());
-    println!("Part 1: {}", part_1(&parsed).unwrap());
-    println!("Part 2: {}", part_2(&parsed).unwrap());
 }
 
 #[cfg(test)]

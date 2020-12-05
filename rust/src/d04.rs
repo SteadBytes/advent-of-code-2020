@@ -5,6 +5,47 @@ use PassportField::*;
 
 const REQUIRED_FIELDS: [PassportField; 7] = [Ecl, Pid, Eyr, Hcl, Byr, Iyr, Hgt];
 
+pub fn run(input: &str) {
+    let passports = parse_input(input).expect("unable to parse input");
+    println!("Part 1: {}", part_1(&passports));
+    println!("Part 2: {}", part_2(&passports));
+}
+
+fn part_1<'a>(passports: &Vec<HashMap<PassportField, &'a str>>) -> usize {
+    passports
+        .iter()
+        .filter(|p| REQUIRED_FIELDS.iter().all(|f| p.contains_key(f)))
+        .count()
+}
+
+fn part_2<'a>(passports: &Vec<HashMap<PassportField, &'a str>>) -> usize {
+    passports
+        .iter()
+        .filter(|p| {
+            REQUIRED_FIELDS
+                .iter()
+                .all(|f| p.get(f).and_then(|v| Some(f.is_valid(v))).unwrap_or(false))
+        })
+        .count()
+}
+
+fn parse_input<'a>(input: &'a str) -> Result<Vec<HashMap<PassportField, &'a str>>, ParseError> {
+    input
+        .split("\n\n") // passports
+        .map(|p| {
+            p.lines()
+                .flat_map(|l| l.split(" ")) // key:value pairs
+                .map(|kv| {
+                    let mut kv = kv.split(":");
+                    let k = kv.next().ok_or(ParseError::InvalidKV)?;
+                    let v = kv.next().ok_or(ParseError::InvalidKV)?;
+                    Ok((PassportField::from_str(k)?, v))
+                })
+                .collect()
+        })
+        .collect()
+}
+
 #[derive(PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
 enum ParseError {
     InvalidKV,
@@ -73,47 +114,6 @@ fn parses_in_range<T: FromStr + PartialOrd>(s: &str, min: T, max: T) -> bool {
         .ok()
         .map(|x| min <= x && x <= max)
         .unwrap_or(false)
-}
-
-fn part_1<'a>(passports: &Vec<HashMap<PassportField, &'a str>>) -> usize {
-    passports
-        .iter()
-        .filter(|p| REQUIRED_FIELDS.iter().all(|f| p.contains_key(f)))
-        .count()
-}
-
-fn part_2<'a>(passports: &Vec<HashMap<PassportField, &'a str>>) -> usize {
-    passports
-        .iter()
-        .filter(|p| {
-            REQUIRED_FIELDS
-                .iter()
-                .all(|f| p.get(f).and_then(|v| Some(f.is_valid(v))).unwrap_or(false))
-        })
-        .count()
-}
-
-fn parse_input<'a>(input: &'a str) -> Result<Vec<HashMap<PassportField, &'a str>>, ParseError> {
-    input
-        .split("\n\n") // passports
-        .map(|p| {
-            p.lines()
-                .flat_map(|l| l.split(" ")) // key:value pairs
-                .map(|kv| {
-                    let mut kv = kv.split(":");
-                    let k = kv.next().ok_or(ParseError::InvalidKV)?;
-                    let v = kv.next().ok_or(ParseError::InvalidKV)?;
-                    Ok((PassportField::from_str(k)?, v))
-                })
-                .collect()
-        })
-        .collect()
-}
-
-pub fn run(input: &str) {
-    let passports = parse_input(input).expect("unable to parse input");
-    println!("Part 1: {}", part_1(&passports));
-    println!("Part 2: {}", part_2(&passports));
 }
 
 #[cfg(test)]

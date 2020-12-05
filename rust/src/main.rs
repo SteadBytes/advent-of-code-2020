@@ -6,15 +6,13 @@ mod d05;
 use std::io::{self, Read};
 
 fn main() {
-    let day = std::env::args()
-        .nth(1)
-        .expect("must provide a day e.g. d01");
+    let day = std::env::args().nth(1).expect("must provide a day e.g. 1");
     let run = match day.as_ref() {
-        "d01" => d01::run,
-        "d03" => d03::run,
-        "d04" => d04::run,
-        "d05" => d05::run,
-        _ => panic!("must provide a valid day e.g. d01"),
+        "1" => d01::run,
+        "3" => d03::run,
+        "4" => d04::run,
+        "5" => d05::run,
+        _ => panic!("must provide a valid day that has been implemented e.g. 1"),
     };
 
     let mut input = String::new();
