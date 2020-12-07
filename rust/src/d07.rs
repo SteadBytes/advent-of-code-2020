@@ -39,12 +39,41 @@ fn part_1(rules: &BagRules) -> usize {
     found_outer_bags.len()
 }
 
-fn part_2() {}
+fn part_2(rules: &BagRules) -> usize {
+    // Both implementations left in for sake of comparison.
+
+    // count_required_bags_recursive(rules, MY_BAG) - 1 // Don't count my bag
+    count_required_bags_iterative(rules, MY_BAG)
+}
+
+fn count_required_bags_recursive<'a>(rules: &'a BagRules, bag: &'a str) -> usize {
+    1 + rules
+        .get(bag)
+        .unwrap()
+        .iter()
+        .map(|(child, n)| n * count_required_bags_recursive(rules, child))
+        .sum::<usize>()
+}
+
+fn count_required_bags_iterative<'a>(rules: &'a BagRules, bag: &'a str) -> usize {
+    let mut total = 0;
+    let mut s = vec![(bag, 1)];
+
+    while !s.is_empty() {
+        let (bag, n) = s.pop().unwrap();
+        total += n;
+        for (child, x) in rules.get(bag).unwrap() {
+            s.push((child, n * x))
+        }
+    }
+
+    total - 1 // Don't count start bag
+}
 
 pub fn run(input: &str) {
     let rules = parse_input(input).expect("unable to parse input");
     println!("Part 1: {}", part_1(&rules));
-    // println!("Part 2: {}", part_2(&parsed));
+    println!("Part 2: {}", part_2(&rules));
 }
 
 /// Rough syntax for puzzle input:
@@ -140,5 +169,16 @@ dotted black bags contain no other bags.";
     }
 
     #[test]
-    fn part_2_example() {}
+    fn part_2_example() {
+        let input = "\
+shiny gold bags contain 2 dark red bags.
+dark red bags contain 2 dark orange bags.
+dark orange bags contain 2 dark yellow bags.
+dark yellow bags contain 2 dark green bags.
+dark green bags contain 2 dark blue bags.
+dark blue bags contain 2 dark violet bags.
+dark violet bags contain no other bags.";
+        let rules = parse_input(input).unwrap();
+        assert_eq!(part_2(&rules), 126);
+    }
 }
