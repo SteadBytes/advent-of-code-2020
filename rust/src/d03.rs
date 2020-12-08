@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 use std::fmt;
 
 pub fn run(input: &str) {

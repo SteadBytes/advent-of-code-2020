@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+use crate::str::{rsplit_once, split_once};
 use std::collections::{HashMap, VecDeque};
 
 const MY_BAG: &str = "shiny gold";
@@ -46,6 +46,7 @@ fn part_2(rules: &BagRules) -> usize {
     count_required_bags_iterative(rules, MY_BAG)
 }
 
+#[allow(dead_code)]
 fn count_required_bags_recursive<'a>(rules: &'a BagRules, bag: &'a str) -> usize {
     1 + rules
         .get(bag)
@@ -103,22 +104,6 @@ fn parse_input(input: &str) -> Result<BagRules, ParseError> {
             }
         })
         .collect())
-}
-
-pub fn split_once<'a>(s: &'a str, pat: &'a str) -> Option<(&'a str, &'a str)> {
-    let mut split = s.splitn(2, pat);
-    match (split.next(), split.next()) {
-        (Some(s1), Some(s2)) => Some((s1, s2)),
-        _ => None,
-    }
-}
-
-fn rsplit_once<'a>(s: &'a str, pat: &'a str) -> Option<(&'a str, &'a str)> {
-    let mut split = s.rsplitn(2, pat);
-    match (split.next(), split.next()) {
-        (Some(s1), Some(s2)) => Some((s1, s2)),
-        _ => None,
-    }
 }
 
 #[derive(PartialEq, PartialOrd, Eq, Ord, Debug)]

@@ -1,5 +1,4 @@
-#![allow(dead_code)]
-use crate::d07::split_once; // FIXME: Move this to shared library
+use crate::str::split_once;
 use std::collections::HashSet;
 use Opcode::*;
 
@@ -117,7 +116,6 @@ enum ParseError {
 enum Error {
     ExpectedInfiniteLoop,
     ProgramFixNotFound,
-    Parse(ParseError),
 }
 
 #[cfg(test)]

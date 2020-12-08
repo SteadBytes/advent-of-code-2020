@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 use std::collections::HashSet;
 
 fn part_1(group_answers: &Vec<Vec<&str>>) -> usize {
@@ -65,7 +64,6 @@ pub fn run(input: &str) {
 
 #[derive(PartialEq, PartialOrd, Eq, Ord, Debug)]
 enum ParseError {
-    InvalidLength,
     InvalidChar,
 }
 

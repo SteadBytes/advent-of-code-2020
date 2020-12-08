@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use itertools::Itertools;
 
 const TARGET: i32 = 2020;

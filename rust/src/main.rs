@@ -1,15 +1,9 @@
-mod d01;
-mod d03;
-mod d04;
-mod d05;
-mod d06;
-mod d07;
-mod d08;
-
+use aoc2020::*;
 use std::io::{self, Read};
 
 fn main() {
     let day = std::env::args().nth(1).expect("must provide a day e.g. 1");
+    // TODO: Macro for this?
     let run = match day.as_ref() {
         "1" => d01::run,
         "3" => d03::run,

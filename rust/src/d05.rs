@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 use std::collections::HashSet;
 
 const ROW_MAX: u8 = 127;
@@ -63,7 +62,6 @@ enum ParseError {
 
 #[derive(PartialEq, PartialOrd, Eq, Ord, Debug)]
 enum Error {
-    Parse(ParseError),
     NotFound,
 }
 

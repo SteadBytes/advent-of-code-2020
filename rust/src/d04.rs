@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 use std::collections::HashMap;
 use std::str::FromStr;
 use PassportField::*;
@@ -50,7 +49,6 @@ fn parse_input<'a>(input: &'a str) -> Result<Vec<HashMap<PassportField, &'a str>
 enum ParseError {
     InvalidKV,
     InvalidKey,
-    InvalidValue,
 }
 
 #[derive(PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
