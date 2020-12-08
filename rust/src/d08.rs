@@ -3,35 +3,68 @@ use crate::d07::split_once; // FIXME: Move this to shared library
 use std::collections::HashSet;
 use Opcode::*;
 
-fn part_1(prg: &Vec<Instruction>) -> i32 {
-    // TODO: Clean this up
-    let mut pc = 0;
+fn part_1(prg: &Vec<Instruction>) -> Result<i32, Error> {
+    match execute_program(prg) {
+        Err(x) => Ok(x),
+        _ => Err(Error::ExpectedInfiniteLoop),
+    }
+}
+
+fn part_2(prg: &Vec<Instruction>) -> Result<i32, Error> {
+    // Brute force search for the opcode to fix
+    // TODO: I feel like there might be a trick I'm missing in the puzzle that means
+    // a brute force search isn't required...
+    for i in 0..prg.len() {
+        let changed = match prg[i] {
+            (Nop, x) => (Jmp, x),
+            (Jmp, x) => (Nop, x),
+            _ => continue,
+        };
+
+        // TODO: Avoid copying + allocating!
+        let new_prg = [&prg[..i], &[changed], &prg[i + 1..]].concat();
+        if let Ok(x) = execute_program(&new_prg) {
+            return Ok(x);
+        };
+    }
+
+    Err(Error::ProgramFixNotFound)
+}
+
+/// Execute `prg` until termination *or* an inifinite loop is encountered.
+///
+/// If the program terminates then `Result::Ok` is returned, containing the final accumulator
+/// value. If an inifinite loop is encountered then `Result::Err` is returned, containing the
+/// accumulator value immediately before the loop is entered.
+fn execute_program(prg: &Vec<Instruction>) -> Result<i32, i32> {
+    let mut ip = 0;
     let mut acc = 0;
     let mut executed = HashSet::new();
 
-    loop {
-        let instruction = &prg[pc];
-        if executed.contains(&pc) {
-            return acc;
+    while ip < prg.len() {
+        let instruction = &prg[ip];
+        if executed.contains(&ip) {
+            // Infinite loop!
+            return Err(acc);
         }
-        executed.insert(pc);
+        executed.insert(ip);
         match instruction {
             (Acc, x) => acc += x,
             (Jmp, x) if *x < 0 => {
-                pc = pc.checked_sub(x.abs() as usize).unwrap();
+                ip = ip.checked_sub(x.abs() as usize).unwrap();
                 continue;
             }
             (Jmp, x) => {
-                pc += *x as usize;
+                ip += *x as usize;
                 continue;
             }
             (Nop, _) => (),
         }
-        pc += 1;
+        ip += 1;
     }
-}
 
-fn part_2() {}
+    Ok(acc)
+}
 
 fn parse_input(input: &str) -> Result<Vec<Instruction>, ParseError> {
     // TODO: Clean this up a bit
@@ -54,13 +87,19 @@ fn parse_input(input: &str) -> Result<Vec<Instruction>, ParseError> {
 
 pub fn run(input: &str) {
     let program = parse_input(input).expect("unable to parse input");
-    println!("Part 1: {}", part_1(&program));
-    // println!("Part 2: {}", part_2(&parsed));
+    println!(
+        "Part 1: {}",
+        part_1(&program).expect("no infinite loop found")
+    );
+    println!(
+        "Part 2: {}",
+        part_2(&program).expect("unable to find a fix for input program")
+    );
 }
 
 type Instruction = (Opcode, i32);
 
-#[derive(PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
+#[derive(PartialEq, PartialOrd, Eq, Ord, Debug, Hash, Clone)]
 enum Opcode {
     Acc,
     Jmp,
@@ -72,6 +111,13 @@ enum ParseError {
     InvalidOpcode,
     InvalidInstruction,
     InvalidInteger(std::num::ParseIntError),
+}
+
+#[derive(PartialEq, Eq, Debug)]
+enum Error {
+    ExpectedInfiniteLoop,
+    ProgramFixNotFound,
+    Parse(ParseError),
 }
 
 #[cfg(test)]
@@ -110,9 +156,12 @@ acc +6";
     #[test]
     fn part_1_example() {
         let program = parse_input(EXAMPLE_INPUT).unwrap();
-        assert_eq!(part_1(&program), 5);
+        assert_eq!(part_1(&program).unwrap(), 5);
     }
 
     #[test]
-    fn part_2_example() {}
+    fn part_2_example() {
+        let program = parse_input(EXAMPLE_INPUT).unwrap();
+        assert_eq!(part_2(&program).unwrap(), 8);
+    }
 }
