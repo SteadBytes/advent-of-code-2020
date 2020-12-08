@@ -4,6 +4,7 @@ mod d04;
 mod d05;
 mod d06;
 mod d07;
+mod d08;
 
 use std::io::{self, Read};
 
@@ -16,6 +17,7 @@ fn main() {
         "5" => d05::run,
         "6" => d06::run,
         "7" => d07::run,
+        "8" => d08::run,
         _ => panic!("must provide a valid day that has been implemented e.g. 1"),
     };
 
