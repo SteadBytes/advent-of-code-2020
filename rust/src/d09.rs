@@ -26,7 +26,25 @@ fn part_1(data: &Vec<usize>, preamble_len: usize) -> Result<usize, Error> {
     Err(Error::NotFound)
 }
 
-fn part_2() {}
+fn part_2(data: &Vec<usize>, target: usize) -> Result<usize, Error> {
+    // TODO: Use a more sophisticated algorithm (D.P?)
+    // Brute force approach: Starting from i = 0, j = i+2, iterate through contiguous sequences
+    // vec[i..j]. If vec[i..j].sum() < target, increment j. If vec[i..j].sum() == target, return
+    // sum of min/max of vec[i..j] otherwise increment i, set j to i + 2.
+    for i in 0..data.len() - 2 {
+        for j in i + 2..data.len() {
+            let seq = &data[i..j];
+            let sum = seq.iter().sum::<usize>();
+            if sum == target {
+                return Ok(seq.iter().min().unwrap() + seq.iter().max().unwrap());
+            } else if sum > target {
+                break;
+            }
+        }
+    }
+
+    Err(Error::NotFound)
+}
 
 /// Assuming XMAS encryption doesn't support negative numbers.
 fn parse_input(input: &str) -> Result<Vec<usize>, Error> {
@@ -39,13 +57,13 @@ fn parse_input(input: &str) -> Result<Vec<usize>, Error> {
 pub fn run(input: &str) {
     let encoded_data = parse_input(input).expect("unable to parse input");
 
+    let incorrect_value = part_1(&encoded_data, PREAMBLE_LEN)
+        .expect("unable to find number in input which does not have the XMAS encoding property");
+    println!("Part 1: {}", incorrect_value);
     println!(
-        "Part 1: {}",
-        part_1(&encoded_data, PREAMBLE_LEN).expect(
-            "unable to find number in input which does not have the XMAS encoding property"
-        )
+        "Part 2: {}",
+        part_2(&encoded_data, incorrect_value).expect("unable to find the encryption weakness")
     );
-    // println!("Part 2: {}", part_2(&parsed));
 }
 
 #[derive(PartialEq, Eq, Debug)]
@@ -58,6 +76,7 @@ enum Error {
 mod tests {
     use super::*;
 
+    const EXAMPLE_PREAMBLE_LEN: usize = 5;
     const EXAMPLE_INPUT: &str = "\
 35
 20
@@ -95,9 +114,13 @@ mod tests {
     #[test]
     fn part_1_example() {
         let data = parse_input(EXAMPLE_INPUT).unwrap();
-        assert_eq!(part_1(&data, 5).unwrap(), 127);
+        assert_eq!(part_1(&data, EXAMPLE_PREAMBLE_LEN).unwrap(), 127);
     }
 
     #[test]
-    fn part_2_example() {}
+    fn part_2_example() {
+        let data = parse_input(EXAMPLE_INPUT).unwrap();
+        let target = part_1(&data, EXAMPLE_PREAMBLE_LEN).unwrap();
+        assert_eq!(part_2(&data, target).unwrap(), 62);
+    }
 }
