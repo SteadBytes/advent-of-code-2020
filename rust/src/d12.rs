@@ -2,9 +2,9 @@ use std::convert::TryFrom;
 use Instruction::*;
 
 fn part_1(instructions: &Vec<Instruction>) -> u32 {
-    let mut pos = (0_i32, 0_i32);
+    let mut pos = (0, 0);
     // Start facing east
-    let mut dir = (1_i32, 0_i32);
+    let mut dir = (1, 0);
 
     for inst in instructions {
         match inst {
@@ -24,7 +24,27 @@ fn part_1(instructions: &Vec<Instruction>) -> u32 {
     u32::try_from(pos.0.abs() + pos.1.abs()).unwrap() // FIXME
 }
 
-fn part_2() {}
+fn part_2(instructions: &Vec<Instruction>) -> u32 {
+    let mut pos = (0, 0);
+    let mut wp = (10, 1);
+
+    for inst in instructions {
+        match inst {
+            Forward(n) => {
+                pos.0 += wp.0 * n;
+                pos.1 += wp.1 * n;
+            }
+            North(n) => wp.1 += n,
+            South(n) => wp.1 -= n,
+            East(n) => wp.0 += n,
+            West(n) => wp.0 -= n,
+            Left(n) => wp = clockwise_rotate(&wp, -*n),
+            Right(n) => wp = clockwise_rotate(&wp, *n),
+        }
+    }
+
+    u32::try_from(pos.0.abs() + pos.1.abs()).unwrap() // FIXME
+}
 
 fn parse_input(input: &str) -> Result<Vec<Instruction>, ParseError> {
     input
@@ -55,7 +75,7 @@ fn parse_input(input: &str) -> Result<Vec<Instruction>, ParseError> {
 pub fn run(input: &str) {
     let instructions = parse_input(input).expect("unable to parse input");
     println!("Part 1: {}", part_1(&instructions));
-    // println!("Part 2: {}", part_2(&parsed));
+    println!("Part 2: {}", part_2(&instructions));
 }
 
 fn clockwise_rotate(p: &(i32, i32), angle: i32) -> (i32, i32) {
@@ -113,5 +133,8 @@ F11";
     }
 
     #[test]
-    fn part_2_example() {}
+    fn part_2_example() {
+        let instructions = parse_input(EXAMPLE_INPUT).unwrap();
+        assert_eq!(part_2(&instructions), 286);
+    }
 }
