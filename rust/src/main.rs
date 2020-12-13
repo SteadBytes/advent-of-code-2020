@@ -16,6 +16,7 @@ fn main() {
         "10" => d10::run,
         "11" => d11::run,
         "12" => d12::run,
+        "13" => d13::run,
         _ => panic!("must provide a valid day that has been implemented e.g. 1"),
     };
 
