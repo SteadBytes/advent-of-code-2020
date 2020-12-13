@@ -11,7 +11,9 @@ fn part_1(layout: &mut Grid) -> usize {
     }
 }
 
-fn part_2() {}
+fn part_2(layout: &mut Grid) -> usize {
+    todo!()
+}
 
 fn parse_input(input: &str) -> Result<Grid, ParseError> {
     // TODO: Clean this up
@@ -318,5 +320,8 @@ L.LLLLL.LL";
     }
 
     #[test]
-    fn part_2_example() {}
+    fn part_2_example() {
+        let mut layout = parse_input(EXAMPLE_INPUT).unwrap();
+        assert_eq!(part_2(&mut layout), 26);
+    }
 }
