@@ -1,37 +1,37 @@
-use std::collections::HashMap;
-
-fn part_1(start_nums: &Vec<u32>) -> u32 {
+fn part_1(start_nums: &Vec<usize>) -> usize {
     play(start_nums, 2020)
 }
 
-fn part_2(start_nums: &Vec<u32>) -> u32 {
+fn part_2(start_nums: &Vec<usize>) -> usize {
     play(start_nums, 30000000)
 }
 
 /// Play rounds of the memory game until `target_turn` is reached. At which point, return the
 /// number spoken on that turn.
-fn play(start_nums: &Vec<u32>, target_turn: u32) -> u32 {
+fn play(start_nums: &Vec<usize>, target_turn: usize) -> usize {
     // Skip the starting rounds (see turn_history)
     let mut prev = *start_nums.last().unwrap();
-    let mut turn = start_nums.len() as u32;
-    // {num: turn_last_spoken}
-    // Initialised with the first n - 1 turns e.g. {0: 1, 3: 2} for input "0,3,6"
-    let mut turn_history = start_nums[..start_nums.len() - 1]
-        .iter()
-        .enumerate()
-        .map(|(i, x)| (*x, (i + 1) as u32))
-        .collect::<HashMap<u32, u32>>();
+    let mut turn = start_nums.len();
+    // Pre-allocate storage for the number spoken on each turn.
+    // - Index -> number
+    // - Value -> turn last spoken
+    // Indexing by the spoken number is possible because, AFAICT, all the numbers fit well
+    // within usize on both 32-bit and 64-bit architecture. This is significantly faster to access
+    // than a HashMap.
+    let mut th = vec![0; target_turn];
+    for (i, x) in start_nums[..start_nums.len() - 1].iter().enumerate() {
+        th[*x] = i + 1;
+    }
     loop {
-        let next = if let Some(x) = turn_history.get(&prev) {
-            // Previous spoken number had been spoken at least once before last turn
-            turn - x
-        } else {
+        let next = match th[prev] {
             // Previous spoken number spoken for the first time on the last turn
-            0
+            0 => 0,
+            // Previous spoken number had been spoken at least once before last turn
+            x => turn - x,
         };
 
         // Speak number
-        turn_history.insert(prev, turn);
+        th[prev] = turn;
         prev = next;
 
         turn += 1;
@@ -42,7 +42,7 @@ fn play(start_nums: &Vec<u32>, target_turn: u32) -> u32 {
     }
 }
 
-fn parse_input(input: &str) -> Result<Vec<u32>, ParseError> {
+fn parse_input(input: &str) -> Result<Vec<usize>, ParseError> {
     input
         .trim()
         .split(",")
