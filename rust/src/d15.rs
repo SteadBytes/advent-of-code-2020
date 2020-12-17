@@ -1,6 +1,16 @@
 use std::collections::HashMap;
 
 fn part_1(start_nums: &Vec<u32>) -> u32 {
+    play(start_nums, 2020)
+}
+
+fn part_2(start_nums: &Vec<u32>) -> u32 {
+    play(start_nums, 30000000)
+}
+
+/// Play rounds of the memory game until `target_turn` is reached. At which point, return the
+/// number spoken on that turn.
+fn play(start_nums: &Vec<u32>, target_turn: u32) -> u32 {
     // Skip the starting rounds (see turn_history)
     let mut prev = *start_nums.last().unwrap();
     let mut turn = start_nums.len() as u32;
@@ -26,13 +36,11 @@ fn part_1(start_nums: &Vec<u32>) -> u32 {
 
         turn += 1;
 
-        if turn == 2020 {
+        if turn == target_turn {
             return prev;
         }
     }
 }
-
-fn part_2() {}
 
 fn parse_input(input: &str) -> Result<Vec<u32>, ParseError> {
     input
@@ -45,7 +53,7 @@ fn parse_input(input: &str) -> Result<Vec<u32>, ParseError> {
 pub fn run(input: &str) {
     let start_nums = parse_input(input).expect("unable to parse input");
     println!("Part 1: {}", part_1(&start_nums));
-    // println!("Part 2: {}", part_2(&parsed));
+    println!("Part 2: {}", part_2(&start_nums));
 }
 
 #[derive(PartialEq, Eq, Debug)]
@@ -82,5 +90,19 @@ mod tests {
     }
 
     #[test]
-    fn part_2_example() {}
+    fn part_2_examples() {
+        let tests = [
+            ("0,3,6", 175594),
+            ("1,3,2", 2578),
+            ("2,1,3", 3544142),
+            ("1,2,3", 261214),
+            ("2,3,1", 6895259),
+            ("3,2,1", 18),
+            ("3,1,2", 362),
+        ];
+        for (input, expected) in &tests {
+            let start_nums = parse_input(input).unwrap();
+            assert_eq!(part_2(&start_nums), *expected);
+        }
+    }
 }
