@@ -5,7 +5,16 @@ type FieldSpec<'a> = (&'a str, Vec<RangeInclusive<u32>>);
 type Ticket = Vec<u32>;
 
 fn part_1(fields: &Vec<FieldSpec>, nearby_tickets: &Vec<Ticket>) -> u32 {
-    todo!()
+    nearby_tickets
+        .iter()
+        .flat_map(|ticket| {
+            ticket.iter().filter(|x| {
+                !fields
+                    .iter()
+                    .any(|(_, valid_ranges)| valid_ranges.iter().any(|r| r.contains(x)))
+            })
+        })
+        .sum()
 }
 
 fn part_2() {}
