@@ -1,4 +1,4 @@
-//! `&str` utilities
+//! `&str` related utilities
 
 pub fn split_once<'a>(s: &'a str, pat: &'a str) -> Option<(&'a str, &'a str)> {
     let mut split = s.splitn(2, pat);

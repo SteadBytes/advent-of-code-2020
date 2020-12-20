@@ -14,3 +14,5 @@ pub mod d14;
 pub mod d15;
 pub mod d16;
 mod str;
+#[macro_use]
+mod macros;
