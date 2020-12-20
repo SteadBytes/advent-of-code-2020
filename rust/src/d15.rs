@@ -90,6 +90,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(not(feature = "slowtests"), ignore)]
     fn part_2_examples() {
         let tests = [
             ("0,3,6", 175594),
