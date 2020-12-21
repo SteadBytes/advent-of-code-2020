@@ -102,3 +102,13 @@ macro_rules! char_enum {
         }
     }
 }
+
+/// Conditionally compiled `std::eprintln` macro. Included iff `debug_assertions` (off by
+/// default in release mode) is present.
+#[macro_export]
+macro_rules! dbg_eprintln {
+    ($($rest:tt)*) => {
+        #[cfg(debug_assertions)]
+        std::eprintln!($($rest)*)
+    }
+}
