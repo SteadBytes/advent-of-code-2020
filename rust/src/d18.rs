@@ -1,21 +1,42 @@
 use crate::dbg_eprintln;
+use OpType::*;
 use Token::*;
+
+// TODO: Plenty of room for improvement - better error handling, reducing allocations during
+// eval/parsing e.t.c but this works correctly and (on my laptop at least) executes my puzzle input
+// ,to the human eye, instantaneously.
 
 // TODO: return Result?
 fn part_1(exprs: &[Vec<Token>]) -> u64 {
+    let getop: OpLookup = |op: &OpType| match op {
+        Add => (|x, y| x + y, 0),
+        Mul => (|x, y| x * y, 0),
+    };
+
     exprs
         .iter()
-        .try_fold(0, |acc, e| evaluate(&e).map(|x| acc + x))
+        .try_fold(0, |acc, e| evaluate(&e, getop).map(|x| acc + x))
         .unwrap()
 }
 
-fn part_2() {}
+// TODO: return Result?
+fn part_2(exprs: &[Vec<Token>]) -> u64 {
+    let getop: OpLookup = |op: &OpType| match op {
+        Add => (|x, y| x + y, 1),
+        Mul => (|x, y| x * y, 0),
+    };
+
+    exprs
+        .iter()
+        .try_fold(0, |acc, e| evaluate(&e, getop).map(|x| acc + x))
+        .unwrap()
+}
 
 /// Evaluate an infix expression `expr` to a single value.
 ///
 /// `expr` is first transformed into postfix notation via a simplified (no operator
-/// precedence) shunting-yard algorithm before the resulting expression is evaluated.
-fn evaluate(expr: &[Token]) -> Result<u64, ParseError> {
+/// associativity) shunting-yard algorithm before the resulting expression is evaluated.
+fn evaluate(expr: &[Token], getop: OpLookup) -> Result<u64, ParseError> {
     dbg_eprintln!("expr (infix): {:?}", expr);
     // Shunting-yard algorithm
     let mut outq: Vec<Token> = vec![]; // Queue of values/operators in postfix notation
@@ -25,17 +46,22 @@ fn evaluate(expr: &[Token]) -> Result<u64, ParseError> {
         match t {
             Int(_) => outq.push(*t),
             LParen => opstack.push(*t),
-            Plus | Star => {
+            Operator(optype) => {
+                let (_, op_precedence) = getop(optype);
                 while let Some(top) = opstack.last() {
                     dbg_eprintln!("top: {:?}", top);
                     match top {
                         LParen => break,
-                        // Normal shunting-yard alogrithm would take operator precedence into
-                        // account here. Since there is none (other than parenthesis) this is
-                        // simplified to just push the next operator onto the output.
-                        Star | Plus => {
-                            let op = opstack.pop().unwrap();
-                            outq.push(op);
+                        // Note: Normal shunting-yard alogrithm would take associativity into
+                        // account here. Since both possible operators have the same (left)
+                        // associativity this has been removed.
+                        Operator(top_optype) => {
+                            let (_, top_op_precedence) = getop(top_optype);
+                            if top_op_precedence >= op_precedence {
+                                outq.push(opstack.pop().unwrap());
+                            } else {
+                                break;
+                            }
                         }
                         _ => return Err(ParseError::InvalidExpression),
                     }
@@ -64,20 +90,14 @@ fn evaluate(expr: &[Token]) -> Result<u64, ParseError> {
     // Evaluate postfix expression in outq
     let mut stack = vec![];
     for t in outq {
+        dbg_eprintln!("t: {:?}", t);
         match t {
             Int(x) => stack.push(x),
             // TODO: Assign a function to operators directly to avoid this duplication?
-            Plus => {
+            Operator(op) => {
                 if let (Some(y), Some(x)) = (stack.pop(), stack.pop()) {
-                    stack.push(x + y);
-                } else {
-                    // Missing operand
-                    return Err(ParseError::InvalidExpression);
-                }
-            }
-            Star => {
-                if let (Some(y), Some(x)) = (stack.pop(), stack.pop()) {
-                    stack.push(x * y);
+                    let (f, _) = getop(&op);
+                    stack.push(f(x, y));
                 } else {
                     // Missing operand
                     return Err(ParseError::InvalidExpression);
@@ -101,11 +121,11 @@ fn parse_input(input: &str) -> Result<Vec<Vec<Token>>, ParseError> {
                 match c {
                     // Basic symbols
                     '+' => {
-                        r.push(Plus);
+                        r.push(Operator(Add));
                         chars.next();
                     }
                     '*' => {
-                        r.push(Star);
+                        r.push(Operator(Mul));
                         chars.next();
                     }
                     '(' => {
@@ -141,14 +161,22 @@ fn parse_input(input: &str) -> Result<Vec<Vec<Token>>, ParseError> {
 pub fn run(input: &str) {
     let tokens = parse_input(input).expect("unable to parse input");
     println!("Part 1: {}", part_1(&tokens));
-    // println!("Part 2: {}", part_2(&tokens));
+    println!("Part 2: {}", part_2(&tokens));
+}
+
+/// Returns a tuple of `(apply_fn, precedence)` for a given `OpType`.
+type OpLookup = fn(&OpType) -> (fn(u64, u64) -> u64, u8);
+
+#[derive(PartialEq, PartialOrd, Eq, Ord, Debug, Clone, Copy)]
+enum OpType {
+    Add,
+    Mul,
 }
 
 #[derive(PartialEq, PartialOrd, Eq, Ord, Debug, Clone, Copy)]
 enum Token {
     Int(u64),
-    Plus,
-    Star,
+    Operator(OpType),
     LParen,
     RParen,
 }
@@ -156,7 +184,6 @@ enum Token {
 #[derive(PartialEq, PartialOrd, Eq, Ord, Debug)]
 enum ParseError {
     InvalidCharacter(char),
-    IncompleteExpression,
     InvalidExpression,
 }
 
@@ -173,6 +200,7 @@ mod tests {
         "((2 + 4 * 9) * (6 + 9 * 8 + 6) + 6) + 2 + 4 * 2",
     ];
     const PART_1_EXAMPLE_ANSWERS: [u64; 6] = [71, 51, 26, 437, 12240, 13632];
+    const PART_2_EXAMPLE_ANSWERS: [u64; 6] = [231, 51, 46, 1445, 669060, 23340];
 
     #[test]
     fn parse_input_examples() {
@@ -182,85 +210,85 @@ mod tests {
         let expected: [Vec<Token>; EXAMPLE_INPUTS.len()] = [
             vec![
                 Int(1),
-                Plus,
+                Operator(Add),
                 Int(2),
-                Star,
+                Operator(Mul),
                 Int(3),
-                Plus,
+                Operator(Add),
                 Int(4),
-                Star,
+                Operator(Mul),
                 Int(5),
-                Plus,
+                Operator(Add),
                 Int(6),
             ],
             vec![
                 Int(1),
-                Plus,
+                Operator(Add),
                 LParen,
                 Int(2),
-                Star,
+                Operator(Mul),
                 Int(3),
                 RParen,
-                Plus,
+                Operator(Add),
                 LParen,
                 Int(4),
-                Star,
+                Operator(Mul),
                 LParen,
                 Int(5),
-                Plus,
+                Operator(Add),
                 Int(6),
                 RParen,
                 RParen,
             ],
             vec![
                 Int(2),
-                Star,
+                Operator(Mul),
                 Int(3),
-                Plus,
+                Operator(Add),
                 LParen,
                 Int(4),
-                Star,
+                Operator(Mul),
                 Int(5),
                 RParen,
             ],
             vec![
                 Int(5),
-                Plus,
+                Operator(Add),
                 LParen,
                 Int(8),
-                Star,
+                Operator(Mul),
                 Int(3),
-                Plus,
+                Operator(Add),
                 Int(9),
-                Plus,
+                Operator(Add),
                 Int(3),
-                Star,
+                Operator(Mul),
                 Int(4),
-                Star,
+                Operator(Mul),
                 Int(3),
                 RParen,
             ],
             vec![
                 Int(5),
-                Star,
+                Operator(Mul),
                 Int(9),
-                Star,
+                Operator(Mul),
                 LParen,
                 Int(7),
-                Star,
+                Operator(Mul),
                 Int(3),
-                Star,
+                Operator(Mul),
                 Int(3),
-                Plus,
+                Operator(Add),
                 Int(9),
-                Star,
+                Operator(Mul),
                 Int(3),
-                Plus,
+                Operator(Add),
                 LParen,
                 Int(8),
-                Plus,
+                Operator(Add),
                 Int(6),
-                Star,
+                Operator(Mul),
                 Int(4),
                 RParen,
                 RParen,
@@ -269,29 +297,29 @@ mod tests {
                 LParen,
                 LParen,
                 Int(2),
-                Plus,
+                Operator(Add),
                 Int(4),
-                Star,
+                Operator(Mul),
                 Int(9),
                 RParen,
-                Star,
+                Operator(Mul),
                 LParen,
                 Int(6),
-                Plus,
+                Operator(Add),
                 Int(9),
-                Star,
+                Operator(Mul),
                 Int(8),
-                Plus,
+                Operator(Add),
                 Int(6),
                 RParen,
-                Plus,
+                Operator(Add),
                 Int(6),
                 RParen,
-                Plus,
+                Operator(Add),
                 Int(2),
-                Plus,
+                Operator(Add),
                 Int(4),
-                Star,
+                Operator(Mul),
                 Int(2),
             ],
         ];
@@ -318,5 +346,20 @@ mod tests {
     }
 
     #[test]
-    fn part_2_example() {}
+    fn part_2_examples() {
+        for (input, expected) in EXAMPLE_INPUTS.iter().zip(&PART_2_EXAMPLE_ANSWERS) {
+            let exprs = parse_input(input).unwrap();
+            assert_eq!(part_2(&exprs), *expected);
+        }
+    }
+
+    #[test]
+    fn part_2_examples_joined() {
+        // Examples are given as single lines, however the puzzle input is multline - join into
+        // a single input for a simpler test.
+        let single_input = EXAMPLE_INPUTS.join("\n");
+        let exprs = parse_input(&single_input).unwrap();
+        // Sum of individual expression results given in puzzle
+        assert_eq!(part_2(&exprs), 694173);
+    }
 }
