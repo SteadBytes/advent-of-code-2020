@@ -19,3 +19,4 @@ mod str;
 #[macro_use]
 mod macros;
 pub mod d18;
+pub mod d19;
