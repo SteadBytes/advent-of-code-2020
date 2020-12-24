@@ -66,46 +66,6 @@ fn part_1(rules: &Rules, messages: &[&str]) -> usize {
     messages.iter().filter(|s| re.is_match(s)).count()
 }
 
-/// Compiles `rules[0]` into a single non-capturing Regex string to match an *entire* message.
-fn rules2regex<'a>(rules: &[Rule<'a>]) -> String {
-    // Include anchors as a message must match *entirely*
-    return format!("^{}$", rule2regex(rules, &rules[0]));
-}
-
-/// Compiles `r` into a single non-capturing Regex string to match *part* of a message.
-// TODO: Return Option or Result
-// TODO: Avoid allocating String
-// TODO: Avoid recursion - this was (IMO) the easiest/natural implementation and works absolutely
-//       fine for the size of the puzzle input. However, it requires quite a lot of Vec allocation
-//       & String joining as well as potentially causing issue for larger rules/rule sets.
-fn rule2regex<'a>(rules: &[Rule<'a>], r: &'a Rule) -> String {
-    match r {
-        // Base case: Literal rules cannot be further expanded
-        Literal(s) => s.to_string(),
-        // Recursive case: Composite rules can be expanded into alternations between
-        // groups of Literal rules
-        Composite(alts) => {
-            // Alternatives expanded into groups of literals
-            let groups = alts
-                .iter()
-                .map(|seq| seq.iter().map(|id| rule2regex(rules, &rules[*id])));
-            if alts.len() > 1 {
-                // Multiple alternatives -> multiple alternate non-capturing groups
-                format!(
-                    "(?:{})", // Group for a single choice e.g. (?:abab)
-                    groups
-                        .map(|seq| seq.collect::<Vec<_>>().join(""))
-                        .collect::<Vec<_>>()
-                        .join("|")  // Match *one* of the choices
-                )
-            } else {
-                // Single choice -> match string of literals
-                groups.flatten().collect::<Vec<_>>().join("")
-            }
-        }
-    }
-}
-
 /// Observation: Rules 8 and 11 *only* appear in rule `0: 8 11` (the target rule).
 /// - Matching messages must therefore start/end with matches for rules `8`/`11`
 ///
@@ -135,15 +95,43 @@ fn rule2regex<'a>(rules: &[Rule<'a>], r: &'a Rule) -> String {
 /// Note: As stated by the puzzle, this *only* applies to the rules/messages in the puzzle input
 /// and does not hold in the general case.
 fn part_2(rules: &Rules, messages: &[&str]) -> usize {
-    // FIXME
+    // FIXME: Avoid this cloning?
     let mut rules = rules.clone();
     rules[8] = Composite(vec![vec![42], vec![42, 8]]);
     rules[11] = Composite(vec![vec![42, 31], vec![42, 11, 31]]);
-    todo!()
+
+    let r31_pattern = rule2regex(&rules, &rules[31]);
+    let r42_pattern = rule2regex(&rules, &rules[42]);
+
+    let start_end_re = Regex::new(&format!(
+        "^(?P<start>(?:{})+)(?P<end>(?:{})+)$",
+        r42_pattern, r31_pattern
+    ))
+    .expect("invalid start/end pattern");
+
+    let r31_cap =
+        Regex::new(&format!("({})", r31_pattern)).expect("invalid rule 31 capture pattern");
+    let r42_cap =
+        Regex::new(&format!("({})", r42_pattern)).expect("invalid rule 42 capture pattern");
+
+    messages
+        .iter()
+        .filter(|m| {
+            let mut start_end_caps = start_end_re.captures_iter(m);
+            match (start_end_caps.next(), start_end_caps.next()) {
+                (Some(c), None) => {
+                    r42_cap.find_iter(&c["start"]).count() > r31_cap.find_iter(&c["end"]).count()
+                }
+                _ => false,
+            }
+        })
+        .count()
 }
 
-fn parse_id(s: &str) -> Result<usize, ParseError> {
-    s.parse::<usize>().map_err(|e| ParseError::InvalidRuleId(e))
+pub fn run(input: &str) {
+    let (rules, messages) = parse_input(input).expect("unable to parse input");
+    println!("Part 1: {}", part_1(&rules, &messages));
+    println!("Part 2: {}", part_2(&rules, &messages));
 }
 
 fn parse_input(input: &str) -> Result<(Rules, Vec<&str>), ParseError> {
@@ -182,10 +170,48 @@ fn parse_input(input: &str) -> Result<(Rules, Vec<&str>), ParseError> {
     Ok((rules, lines.collect()))
 }
 
-pub fn run(input: &str) {
-    let (rules, messages) = parse_input(input).expect("unable to parse input");
-    println!("Part 1: {}", part_1(&rules, &messages));
-    // println!("Part 2: {}", part_2(&parsed));
+fn parse_id(s: &str) -> Result<usize, ParseError> {
+    s.parse::<usize>().map_err(|e| ParseError::InvalidRuleId(e))
+}
+
+/// Compiles `rules[0]` into a single non-capturing Regex string to match an *entire* message.
+fn rules2regex<'a>(rules: &[Rule<'a>]) -> String {
+    // Include anchors as a message must match *entirely*
+    return format!("^{}$", rule2regex(rules, &rules[0]));
+}
+
+/// Compiles `r` into a single non-capturing Regex string to match *part* of a message.
+// TODO: Return Option or Result
+// TODO: Avoid allocating String
+// TODO: Avoid recursion - this was (IMO) the easiest/natural implementation and works absolutely
+//       fine for the size of the puzzle input. However, it requires quite a lot of Vec allocation
+//       & String joining as well as potentially causing issue for larger rules/rule sets.
+fn rule2regex<'a>(rules: &[Rule<'a>], r: &'a Rule) -> String {
+    match r {
+        // Base case: Literal rules cannot be further expanded
+        Literal(s) => s.to_string(),
+        // Recursive case: Composite rules can be expanded into alternations between
+        // groups of Literal rules
+        Composite(alts) => {
+            // Alternatives expanded into groups of literals
+            let groups = alts
+                .iter()
+                .map(|seq| seq.iter().map(|id| rule2regex(rules, &rules[*id])));
+            if alts.len() > 1 {
+                // Multiple alternatives -> multiple alternate non-capturing groups
+                format!(
+                    "(?:{})", // Group for a single choice e.g. (?:abab)
+                    groups
+                        .map(|seq| seq.collect::<Vec<_>>().join(""))
+                        .collect::<Vec<_>>()
+                        .join("|")  // Match *one* of the choices
+                )
+            } else {
+                // Single choice -> match string of literals
+                groups.flatten().collect::<Vec<_>>().join("")
+            }
+        }
+    }
 }
 
 #[derive(PartialEq, Eq, Debug)]
@@ -230,6 +256,77 @@ bababa
 abbbab
 aaabbb
 aaaabbb"#
+    };
+
+    /// The example is missing some rules to make a contiguous set from `0..=41`. `parse_input`
+    /// assumes a full set as it sorts by `id` then collects into a `Vec`. Without a full set,
+    /// the solution functions will cause index out of bounds errors when looking up rule IDs.
+    /// Forunately, the example rules don't *actually* use any of the missing ones so I have filled
+    /// them in below with `Literal("x")` rules. These should never actually be matched against and
+    /// if they are it will be clear as no messages will ever match them.
+    /// This was quicker and easier than changing the implementation to accomodate for this (e.g.
+    /// using a HashMap keyed by rule id).
+    #[rustfmt::skip]
+    const EXAMPLE_INPUT_2: &str = {
+r#"42: 9 14 | 10 1
+9: 14 27 | 1 26
+10: 23 14 | 28 1
+1: "a"
+11: 42 31
+5: 1 14 | 15 1
+19: 14 1 | 14 14
+12: 24 14 | 19 1
+16: 15 1 | 14 14
+31: 14 17 | 1 13
+6: 14 14 | 1 14
+2: 1 24 | 14 4
+0: 8 11
+13: 14 3 | 1 12
+15: 1 | 14
+17: 14 2 | 1 7
+23: 25 1 | 22 14
+28: 16 1
+4: 1 1
+20: 14 14 | 1 15
+3: 5 14 | 16 1
+27: 1 6 | 14 18
+14: "b"
+21: 14 1 | 1 14
+25: 1 1 | 1 14
+22: 14 14
+8: 42
+26: 14 22 | 1 20
+18: 15 15
+7: 14 5 | 1 21
+24: 14 1
+32: "z"
+33: "z"
+34: "z"
+35: "z"
+36: "z"
+37: "z"
+38: "z"
+39: "z"
+40: "z"
+41: "z"
+29: "z"
+30: "z"
+
+abbbbbabbbaaaababbaabbbbabababbbabbbbbbabaaaa
+bbabbbbaabaabba
+babbbbaabbbbbabbbbbbaabaaabaaa
+aaabbbbbbaaaabaababaabababbabaaabbababababaaa
+bbbbbbbaaaabbbbaaabbabaaa
+bbbababbbbaaaaaaaabbababaaababaabab
+ababaaaaaabaaab
+ababaaaaabbbaba
+baabbaaaabbaaaababbaababb
+abbbbabbbbaaaababbbbbbaaaababb
+aaaaabbaabaaaaababaa
+aaaabbaaaabbaaa
+aaaabbaabbaaaaaaabbbabbbaaabbaabaaa
+babaaabbbaaabaababbaabababaaab
+aabbbbbaabbbaaaaaabbbbbababaaaaabbaaabba"#
     };
 
     #[test]
@@ -284,7 +381,7 @@ aaaabbb"#
             Composite(vec![vec![3, 1], vec![1]]),
             Literal("b"),
         ];
-        assert_eq!(rules2regex(&rules).unwrap(), "^a(?:ba|a)(?:ba|a)$");
+        assert_eq!(rules2regex(&rules), "^a(?:ba|a)(?:ba|a)$");
     }
 
     #[test]
@@ -294,5 +391,9 @@ aaaabbb"#
     }
 
     #[test]
-    fn part_2_example() {}
+    fn part_2_example() {
+        // FIXME: EXAMPLE_INTPUT_2 is missing some rules
+        let (rules, messages) = parse_input(EXAMPLE_INPUT_2).unwrap();
+        assert_eq!(part_2(&rules, &messages), 12);
+    }
 }
