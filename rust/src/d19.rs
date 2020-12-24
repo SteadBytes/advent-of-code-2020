@@ -105,7 +105,41 @@ fn rules2regex<'a>(rules: &[Rule<'a>]) -> Option<String> {
     return Some(format!("^{}$", inner(rules, &rules[0])));
 }
 
-fn part_2() {}
+/// Observation: Rules 8 and 11 *only* appear in rule `0: 8 11` (the target rule).
+/// - Matching messages must therefore start/end with matches for rules `8`/`11`
+///
+/// New rule `8: 42 | 42 8` is equivalent to one or more matches of rule `42` (`42+`)
+///
+/// New rule `11: 42 31 | 42 11 31` is equivalent to `42 (?:11|?R))* 31`
+/// - Recursive in between leading and trailing `42`/`31`
+///
+/// Rule `0 is now equivalent to `^42+ (?:42 (?:11|?R) 31)$`
+///
+/// Observation:
+/// - Message must start with at least one match for rule `42`
+/// - Message must end with at least one match for rule `31`
+///
+/// Observation: In a matching message, the number of matches for rule `31` in the *ending* section
+/// (e.g. `31+$`) plus `1` is the *minimum* number of matches for rule `42` in the *preceding* section.
+/// - Given the message starts/ends with matches for rules `42`/`31`
+/// - Rule `11` starts with a single match for rule `42`, followed by `n` recursive matches
+///   with 1 match for rule `42` and rule `31` each.
+///
+/// Match this using several Regexes:
+/// - Check start & end patterns: `^(?P<start>(?:42)+)(?P<end>(?:31)+)$`
+/// - Count number of rule `31` matches in `end` section: `(31)`
+/// - Count number of rule `42` matches in `start` section: `(42)`
+/// - Compare counts to determine validity
+///
+/// Note: As stated by the puzzle, this *only* applies to the rules/messages in the puzzle input
+/// and does not hold in the general case.
+fn part_2(rules: &Rules, messages: &[&str]) -> usize {
+    // FIXME
+    let mut rules = rules.clone();
+    rules[8] = Composite(vec![vec![42], vec![42, 8]]);
+    rules[11] = Composite(vec![vec![42, 31], vec![42, 11, 31]]);
+    todo!()
+}
 
 fn parse_id(s: &str) -> Result<usize, ParseError> {
     s.parse::<usize>().map_err(|e| ParseError::InvalidRuleId(e))
