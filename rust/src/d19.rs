@@ -60,49 +60,50 @@ type Rules<'a> = Vec<Rule<'a>>;
 ///     0 = ^a(?:ba|a)(?:ba|a)$
 ///     ```
 fn part_1(rules: &Rules, messages: &[&str]) -> usize {
-    let re_str = rules2regex(rules).unwrap(); // FIXME
+    let re_str = rules2regex(&rules);
     dbg_eprintln!("{}", re_str);
     let re = Regex::new(&re_str).expect("invalid regex compiled from rule"); // FIXME
     messages.iter().filter(|s| re.is_match(s)).count()
 }
 
-/// Compiles `rules[0]` into a single Regex string.
+/// Compiles `rules[0]` into a single non-capturing Regex string to match an *entire* message.
+fn rules2regex<'a>(rules: &[Rule<'a>]) -> String {
+    // Include anchors as a message must match *entirely*
+    return format!("^{}$", rule2regex(rules, &rules[0]));
+}
+
+/// Compiles `r` into a single non-capturing Regex string to match *part* of a message.
 // TODO: Return Option or Result
 // TODO: Avoid allocating String
 // TODO: Avoid recursion - this was (IMO) the easiest/natural implementation and works absolutely
 //       fine for the size of the puzzle input. However, it requires quite a lot of Vec allocation
 //       & String joining as well as potentially causing issue for larger rules/rule sets.
-fn rules2regex<'a>(rules: &[Rule<'a>]) -> Option<String> {
-    fn inner<'a>(rules: &[Rule<'a>], r: &'a Rule) -> String {
-        match r {
-            // Base case: Literal rules cannot be further expanded
-            Literal(s) => s.to_string(),
-            // Recursive case: Composite rules can be expanded into alternations between
-            // groups of Literal rules
-            Composite(alts) => {
-                // Alternatives expanded into groups of literals
-                let groups = alts
-                    .iter()
-                    .map(|seq| seq.iter().map(|id| inner(rules, &rules[*id])));
-                if alts.len() > 1 {
-                    // Multiple alternatives -> multiple alternate non-capturing groups
-                    format!(
-                        "(?:{})", // Group for a single choice e.g. (?:abab)
-                        groups
-                            .map(|seq| seq.collect::<Vec<_>>().join(""))
-                            .collect::<Vec<_>>()
-                            .join("|")  // Match *one* of the choices
-                    )
-                } else {
-                    // Single choice -> match string of literals
-                    groups.flatten().collect::<Vec<_>>().join("")
-                }
+fn rule2regex<'a>(rules: &[Rule<'a>], r: &'a Rule) -> String {
+    match r {
+        // Base case: Literal rules cannot be further expanded
+        Literal(s) => s.to_string(),
+        // Recursive case: Composite rules can be expanded into alternations between
+        // groups of Literal rules
+        Composite(alts) => {
+            // Alternatives expanded into groups of literals
+            let groups = alts
+                .iter()
+                .map(|seq| seq.iter().map(|id| rule2regex(rules, &rules[*id])));
+            if alts.len() > 1 {
+                // Multiple alternatives -> multiple alternate non-capturing groups
+                format!(
+                    "(?:{})", // Group for a single choice e.g. (?:abab)
+                    groups
+                        .map(|seq| seq.collect::<Vec<_>>().join(""))
+                        .collect::<Vec<_>>()
+                        .join("|")  // Match *one* of the choices
+                )
+            } else {
+                // Single choice -> match string of literals
+                groups.flatten().collect::<Vec<_>>().join("")
             }
         }
     }
-
-    // Include anchors as a message must match *entirely*
-    return Some(format!("^{}$", inner(rules, &rules[0])));
 }
 
 /// Observation: Rules 8 and 11 *only* appear in rule `0: 8 11` (the target rule).
