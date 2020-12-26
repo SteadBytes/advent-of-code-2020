@@ -21,6 +21,4 @@ mod macros;
 pub mod d18;
 pub mod d19;
 pub mod d20;
-
-#[macro_use]
-extern crate q_debug;
+pub mod d21;
