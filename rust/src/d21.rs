@@ -1,5 +1,6 @@
 use crate::str::split_once;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+
 /// Key points:
 /// - Each allergen is found in **exactly 1** ingredient
 /// - Each ingredient contains **0 or more** allergens
@@ -60,38 +61,76 @@ use std::collections::HashMap;
 /// - Total counts for each ingredient
 ///     - Calculate final answer (number of times non-allergenic ingredients are listed)
 fn part_1(freqs: &Frequencies) -> usize {
-    let non_allergenic = freqs.allergen_by_ingredient.iter().filter(|(_, m)| {
-        m.iter()
-            .all(|(a, i)| freqs.allergen_totals.get(a).unwrap() > i)
-    });
-
-    non_allergenic
-        .filter_map(|(i, _)| freqs.ingredient_totals.get(i))
+    freqs
+        .inert_ingredients()
+        .filter_map(|i| freqs.ingredient_totals.get(i))
         .sum()
 }
 
-fn part_2() {
-    todo!()
+/// Observation: For ingredient-allergen assignment to be valid, the total fruequency for the
+/// allergen is equal to the frequency of the allergen for the ingredient.
+fn part_2(freqs: &Frequencies) -> String {
+    // Remove inert ingredients from allergen frequencies by ingredient
+    let mut allergen_freqs_by_ingredient: HashMap<&str, HashMap<&str, usize>> =
+        freqs.allergen_by_ingredient.clone();
+    for ingredient in freqs.inert_ingredients() {
+        allergen_freqs_by_ingredient.remove(ingredient);
+    }
+
+    // Ingredient -> allergen
+    let mut assignments: HashMap<&str, &str> = HashMap::new();
+
+    // Note: Potential for infinite loop if puzzle input is incorrect/parsed improperly/my
+    // assumptions about the puzzle are incorrect.
+    while assignments.len() != freqs.allergen_totals.len() {
+        for (allergen, n) in &freqs.allergen_totals {
+            // Unassigned ingredients that appear the same number of times as allergen
+            let mut equal_count_ingredients =
+                allergen_freqs_by_ingredient
+                    .iter()
+                    .filter_map(|(&ingredient, m)| {
+                        if !assignments.contains_key(ingredient) // Already assigned
+                            && m.get(allergen).map(|x| x == n).unwrap_or(false)
+                        {
+                            Some(ingredient)
+                        } else {
+                            None
+                        }
+                    });
+
+            // One possible ingredient for this allergen - assignment found
+            if let (Some(ingredient), None) = (
+                equal_count_ingredients.next(),
+                equal_count_ingredients.next(),
+            ) {
+                assignments.insert(ingredient, allergen);
+                break;
+            } else {
+                // Cannot assign this allergen yet -> reduce ingredient search space by assigning
+                // other allergens
+                continue;
+            }
+        }
+    }
+
+    let mut res = assignments.keys().cloned().collect::<Vec<_>>();
+    res.sort_by(|&a, &b| assignments.get(a).unwrap().cmp(assignments.get(b).unwrap()));
+    res.join(",")
 }
 
-#[derive(PartialEq, Eq, Debug)]
-struct Frequencies<'a> {
-    allergen_by_ingredient: HashMap<&'a str, HashMap<&'a str, usize>>,
-    allergen_totals: HashMap<&'a str, usize>,
-    ingredient_totals: HashMap<&'a str, usize>,
-}
-
+// TODO: Lots more room for error handling improvements
 fn parse_input(input: &str) -> Result<Frequencies, ParseError> {
     let mut allergen_freqs_by_ingredient: HashMap<&str, HashMap<&str, usize>> = HashMap::new();
     let mut allergen_total_freqs: HashMap<&str, usize> = HashMap::new();
     let mut ingredient_total_freqs: HashMap<&str, usize> = HashMap::new();
 
     for l in input.lines() {
-        let (ingredients_part, allergens_part) = split_once(l, "(contains ").expect("FIXME");
+        let (ingredients_part, allergens_part) =
+            split_once(l, " (contains ").ok_or(ParseError::InvalidInput)?;
         let ingredients = ingredients_part.split(" ").collect::<Vec<_>>();
         let allergens = allergens_part
             .strip_suffix(")")
-            .unwrap()
+            .ok_or(ParseError::InvalidInput)?
             .split(", ")
             .collect::<Vec<_>>();
         for a in &allergens {
@@ -116,13 +155,37 @@ fn parse_input(input: &str) -> Result<Frequencies, ParseError> {
 }
 
 pub fn run(input: &str) {
-    let parsed = parse_input(input).expect("unable to parse input");
-    println!("Part 1: {}", part_1(&parsed));
-    // println!("Part 2: {}", part_2(&parsed));
+    let freqs = parse_input(input).expect("unable to parse input");
+    println!("Part 1: {}", part_1(&freqs));
+    println!("Part 2: {}", part_2(&freqs));
+}
+
+#[derive(PartialEq, Eq, Debug)]
+struct Frequencies<'a> {
+    /// `{ingredient: {allergen: frequency}}`
+    allergen_by_ingredient: HashMap<&'a str, HashMap<&'a str, usize>>,
+    /// `{allergen: frequency}`
+    allergen_totals: HashMap<&'a str, usize>,
+    /// `{ingredient: frequency}`
+    ingredient_totals: HashMap<&'a str, usize>,
+}
+
+impl<'a> Frequencies<'a> {
+    fn inert_ingredients(&'a self) -> impl Iterator<Item = &'a str> + 'a {
+        self.allergen_by_ingredient
+            .iter()
+            .filter(move |(_, m)| {
+                m.iter()
+                    .all(|(allergen, n)| self.allergen_totals.get(allergen).unwrap() > n)
+            })
+            .map(|(&ingredient, _)| ingredient)
+    }
 }
 
 #[derive(PartialEq, PartialOrd, Eq, Ord, Debug)]
-enum ParseError {}
+enum ParseError {
+    InvalidInput,
+}
 
 #[cfg(test)]
 mod tests {
@@ -134,8 +197,9 @@ trh fvjkl sbzzf mxmxvkd (contains dairy)
 sqjhc fvjkl (contains soy)
 sqjhc mxmxvkd sbzzf (contains fish)";
 
-    #[test]
-    fn parse_input_example() {}
+    // TODO
+    // #[test]
+    // fn parse_input_example() {}
 
     #[test]
     fn part_1_example() {
@@ -145,7 +209,7 @@ sqjhc mxmxvkd sbzzf (contains fish)";
 
     #[test]
     fn part_2_example() {
-        // let parsed = parse_input(EXAMPLE_INPUT).unwrap();
-        // assert_eq!(part_2(&parsed),);
+        let parsed = parse_input(EXAMPLE_INPUT).unwrap();
+        assert_eq!(part_2(&parsed), "mxmxvkd,sqjhc,fvjkl".to_string());
     }
 }
