@@ -23,7 +23,6 @@ type Rules<'a> = Vec<Rule<'a>>;
 ///     0: 1 2 2
 ///     1: "a"
 ///     2: "ba" | 1
-///
 ///     message "abaa":
 ///         - "a" matches 1
 ///         - "ba" matches 2 (1st alternative)
@@ -35,7 +34,6 @@ type Rules<'a> = Vec<Rule<'a>>;
 ///     0: 1 2 2
 ///     1: "a"
 ///     2: "ba" | 1
-///
 ///     message "abaab":
 ///         - "a" matches 1
 ///         - "ba" matches 2 (1st alternative)
@@ -49,7 +47,6 @@ type Rules<'a> = Vec<Rule<'a>>;
 ///     1: "a"
 ///     2: 3 1 | 1
 ///     3: "b"
-///
 ///     0 = "ababa" | "abaa" | "aaa" | "aaba"
 ///     ```
 ///
