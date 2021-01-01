@@ -1,6 +1,6 @@
-use crate::char_enum;
 use std::collections::HashSet;
 use Direction::*;
+const REFERENCE_TILE: Coord3 = Coord3 { x: 0, y: 0, z: 0 };
 /// Key points:
 /// - *Horizontal/pointy* hex grid
 ///     - Must be horizontal/pointy due to input directions being east, southeast, southwest, west,
@@ -15,7 +15,7 @@ use Direction::*;
 /// - Tiles may be flipped multiple times
 /// - Not required to actually construct the pattern, just track how many are black
 ///
-/// ## Initial high-level algorithm
+/// ## High-level algorithm
 ///
 /// 1. Maintain a set of *black* tiles.
 /// 2. For each line of input:
@@ -64,7 +64,9 @@ use Direction::*;
 fn part_1(tile_directions: &Vec<Vec<Direction>>) -> usize {
     let mut black_tiles = HashSet::new();
     for directions in tile_directions {
-        let tile_loc = directions.iter().fold((0, 0, 0), |loc, dir| dir.apply(loc));
+        let tile_loc = directions
+            .iter()
+            .fold(REFERENCE_TILE, |loc, dir| loc.apply(dir));
         if black_tiles.contains(&tile_loc) {
             // Currently black -> flip to white
             black_tiles.remove(&tile_loc);
@@ -123,16 +125,25 @@ str_enum! {
     }
 }
 
-impl Direction {
-    fn apply(&self, (x, y, z): (i32, i32, i32)) -> (i32, i32, i32) {
-        match self {
-            East => (x + 1, y - 1, z),
-            Southeast => (x, y - 1, z + 1),
-            Southwest => (x - 1, y, z + 1),
-            West => (x - 1, y + 1, z),
-            Northwest => (x, y + 1, z - 1),
-            Northeast => (x + 1, y, z - 1),
-        }
+#[derive(PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
+struct Coord3 {
+    x: i32,
+    y: i32,
+    z: i32,
+}
+
+impl Coord3 {
+    fn apply(&self, dir: &Direction) -> Coord3 {
+        let (x, y, z) = match dir {
+            East => (self.x + 1, self.y - 1, self.z),
+            Southeast => (self.x, self.y - 1, self.z + 1),
+            Southwest => (self.x - 1, self.y, self.z + 1),
+            West => (self.x - 1, self.y + 1, self.z),
+            Northwest => (self.x, self.y + 1, self.z - 1),
+            Northeast => (self.x + 1, self.y, self.z - 1),
+        };
+
+        Coord3 { x, y, z }
     }
 }
 
@@ -190,14 +201,14 @@ wseweeenwnesenwwwswnew";
     }
 
     #[test]
-    fn direction_apply() {
-        let loc = (0, 0, 0);
-        assert_eq!(East.apply(loc), (1, -1, 0));
-        assert_eq!(Southeast.apply(loc), (0, -1, 1));
-        assert_eq!(Southwest.apply(loc), (-1, 0, 1));
-        assert_eq!(West.apply(loc), (-1, 1, 0));
-        assert_eq!(Northwest.apply(loc), (0, 1, -1));
-        assert_eq!(Northeast.apply(loc), (1, 0, -1));
+    fn apply_direction() {
+        let loc = Coord3 { x: 0, y: 0, z: 0 };
+        assert_eq!(loc.apply(&East), Coord3 { x: 1, y: -1, z: 0 });
+        assert_eq!(loc.apply(&Southeast), Coord3 { x: 0, y: -1, z: 1 });
+        assert_eq!(loc.apply(&Southwest), Coord3 { x: -1, y: 0, z: 1 });
+        assert_eq!(loc.apply(&West), Coord3 { x: -1, y: 1, z: 0 });
+        assert_eq!(loc.apply(&Northwest), Coord3 { x: 0, y: 1, z: -1 });
+        assert_eq!(loc.apply(&Northeast), Coord3 { x: 1, y: 0, z: -1 });
     }
 
     #[test]
