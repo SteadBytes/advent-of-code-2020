@@ -79,8 +79,83 @@ fn part_1(tile_directions: &Vec<Vec<Direction>>) -> usize {
     black_tiles.len()
 }
 
-fn part_2() {
-    todo!()
+/// Key points:
+/// - Rules:
+///     1. Black tile w/ 0 **or** > 2 adjacent black tiles -> flip to white
+///     2. White tile w/ **exactly** 2 adjacent black tiles -> flip to black
+/// - Rules applied simultaneously to every tile
+/// - Day 0 begins with tiles in the state produced by `part_1`
+///     - TODO: Is this right? Not 100% clear
+/// - Locations of *all* white tiles do not need to be known - it is sufficient to know the
+///   locations of all black tiles.
+///   - White tiles can only flip if they are adjacent to black tiles, therefore on each iteration
+///     all tiles > 1 tile away from any black tile is assumed to remain white.
+///
+/// ## High-level algorithm
+///
+/// 1. Compute starting state using a modified version of the algorithm in `part_1`.
+///     - Track white tiles?
+/// 2. For each day (100 in this case):
+///     - Initialise *empty* set of black tiles
+///     - Initialise *empty* set of white tiles *to check*
+///     - Apply rule 1 to black tiles to partially build black tiles set and fully build white
+///     tiles set:
+///         - Insert into black tile set if rule **is not** matched (remains black)
+///         - Insert any adjacent white tiles into white tiles set
+///     - Apply rule 2 to white tiles set
+///         - Insert into black tile set if rule **is** matched (flipped to black)
+///     - Apply the changes by swapping the previous iteration black tile set with the current one
+///         - TODO: Can this be avoided by tracking a diff rather than complete state?
+/// 3. Return the length of the black tile set
+fn part_2(tile_directions: &Vec<Vec<Direction>>) -> usize {
+    // Build initial state via part 1 algorithm
+    let mut black_tiles = HashSet::new();
+    tile_directions
+        .iter()
+        .map(|directions| {
+            directions
+                .iter()
+                .fold(REFERENCE_TILE, |loc, dir| loc.apply(&dir))
+        })
+        .for_each(|tile_loc| {
+            if black_tiles.contains(&tile_loc) {
+                // Currently black -> flip to white
+                black_tiles.remove(&tile_loc);
+            } else {
+                // Currently white -> flip to black
+                black_tiles.insert(tile_loc);
+            }
+        });
+
+    // TODO: This can definitely be optimised to reduce the amount of copying/moving around that
+    // takes place. That said, both part_1 and part_2 complete in ~0.1s on my machine so I'll leave
+    // at that for now...
+    for _ in 0..100 {
+        let mut next_black = HashSet::new();
+        let mut current_white = HashSet::new();
+        for tile_loc in &black_tiles {
+            let (black_adj, white_adj): (Vec<Coord3>, Vec<Coord3>) = tile_loc
+                .iter_adjacent()
+                .partition(|loc| black_tiles.contains(loc));
+            if !(black_adj.len() == 0 || black_adj.len() > 2) {
+                next_black.insert(*tile_loc);
+            }
+            current_white.extend(white_adj);
+        }
+        for tile_loc in current_white {
+            if tile_loc
+                .iter_adjacent()
+                .filter(|loc| black_tiles.contains(loc))
+                .count()
+                == 2
+            {
+                next_black.insert(tile_loc);
+            }
+        }
+        black_tiles = next_black
+    }
+
+    black_tiles.len()
 }
 
 fn parse_input(input: &str) -> Result<Vec<Vec<Direction>>, ParseError> {
@@ -111,7 +186,7 @@ fn parse_input(input: &str) -> Result<Vec<Vec<Direction>>, ParseError> {
 pub fn run(input: &str) {
     let tile_directions = parse_input(input).expect("unable to parse input");
     println!("Part 1: {}", part_1(&tile_directions));
-    // println!("Part 2: {}", part_2(&parsed));
+    println!("Part 2: {}", part_2(&tile_directions));
 }
 
 str_enum! {
@@ -125,7 +200,7 @@ str_enum! {
     }
 }
 
-#[derive(PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
+#[derive(PartialEq, PartialOrd, Eq, Ord, Debug, Hash, Copy, Clone)]
 struct Coord3 {
     x: i32,
     y: i32,
@@ -144,6 +219,12 @@ impl Coord3 {
         };
 
         Coord3 { x, y, z }
+    }
+
+    fn iter_adjacent<'a>(&'a self) -> impl Iterator<Item = Coord3> + 'a {
+        [East, Southeast, Southwest, West, Northwest, Northeast]
+            .iter()
+            .map(move |dir| self.apply(dir))
     }
 }
 
@@ -217,9 +298,9 @@ wseweeenwnesenwwwswnew";
         assert_eq!(part_1(&tile_directions), 10);
     }
 
-    // #[test]
-    // fn part_2_example() {
-    //     let parsed = parse_input(EXAMPLE_INPUT).unwrap();
-    //     assert_eq!(part_2(&parsed),);
-    // }
+    #[test]
+    fn part_2_example() {
+        let tile_directions = parse_input(EXAMPLE_INPUT).unwrap();
+        assert_eq!(part_2(&tile_directions), 2208);
+    }
 }
